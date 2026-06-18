@@ -1,0 +1,6 @@
+{
+  "name": "Idea Tracker",
+  "description": "A minimalist application to capture app ideas immediately and organize them into clarify spaces and projects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

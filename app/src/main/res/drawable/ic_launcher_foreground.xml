@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Glowing Background Rays / Sparks -->
+    <path
+        android:strokeColor="#33D1E4FF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M34,31 L40,37" />
+    <path
+        android:strokeColor="#33D1E4FF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M54,16 L54,23" />
+    <path
+        android:strokeColor="#33D1E4FF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M74,31 L68,37" />
+
+    <!-- Bulb Outer Shell Outline for Depth -->
+    <path
+        android:fillColor="#1AD1E4FF"
+        android:strokeColor="#4DD1E4FF"
+        android:strokeWidth="2.5"
+        android:strokeLineJoin="round"
+        android:pathData="M54,26 C43.5,26 35,34.5 35,45 C35,52 39,58 45,61 L45,69 C45,71.2 46.8,73 49,73 L59,73 C61.2,73 63,71.2 63,69 L63,61 C69,58 73,52 73,45 C73,34.5 64.5,26 54,26 Z" />
+
+    <!-- Filament Socket Lines -->
+    <path
+        android:strokeColor="#7FD1E4FF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M48,77 L60,77" />
+    <path
+        android:strokeColor="#7FD1E4FF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M51,81 L57,81" />
+
+    <!-- Vibrant Lightning Bolt / Spark inside -->
+    <path
+        android:fillColor="#FFD1E4FF"
+        android:fillType="nonZero"
+        android:pathData="M55,34 L45,49 L52,49 L49,63 L61,48 L53,48 Z" />
+
+</vector>
