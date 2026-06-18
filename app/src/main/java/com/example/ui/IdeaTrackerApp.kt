@@ -53,6 +53,12 @@ fun IdeaTrackerApp(viewModel: IdeaViewModel) {
     // Active project view (null means project grid, non-null means inside project view)
     var activeProjectForDetails by remember { mutableStateOf<Project?>(null) }
 
+    // Persistent search and filter states across tabs
+    var searchQuery by remember { mutableStateOf("") }
+    var sortBy by remember { mutableStateOf("Date") }
+    var selectedStatusFilter by remember { mutableStateOf("All") }
+    var isSortAscending by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -266,6 +272,14 @@ fun IdeaTrackerApp(viewModel: IdeaViewModel) {
                         allIdeas = allIdeas,
                         projects = projects,
                         viewModel = viewModel,
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        sortBy = sortBy,
+                        onSortByChange = { sortBy = it },
+                        selectedStatusFilter = selectedStatusFilter,
+                        onSelectedStatusFilterChange = { selectedStatusFilter = it },
+                        isSortAscending = isSortAscending,
+                        onIsSortAscendingChange = { isSortAscending = it },
                         onEditIdea = { showEditIdeaDialog = it },
                         onMoveIdea = { showMoveIdeaDialog = it }
                     )
@@ -959,18 +973,23 @@ fun ProjectWorkspaceScreen(
 }
 
 // ==================== SEARCH AND SORT SCREEN ====================
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchSortScreen(
     allIdeas: List<Idea>,
     projects: List<Project>,
     viewModel: IdeaViewModel,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    sortBy: String,
+    onSortByChange: (String) -> Unit,
+    selectedStatusFilter: String,
+    onSelectedStatusFilterChange: (String) -> Unit,
+    isSortAscending: Boolean,
+    onIsSortAscendingChange: (Boolean) -> Unit,
     onEditIdea: (Idea) -> Unit,
     onMoveIdea: (Idea) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var sortBy by remember { mutableStateOf("Date") } // Date, Priority, Difficulty, Status
-    var selectedStatusFilter by remember { mutableStateOf("All") } // All, Active, Completed
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -987,14 +1006,14 @@ fun SearchSortScreen(
         // Search Bar
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { searchQuery = it },
+            onValueChange = onSearchQueryChange,
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Search title, descriptions, tags...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
             singleLine = true,
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
+                    IconButton(onClick = { onSearchQueryChange("") }) {
                         Icon(Icons.Default.Close, contentDescription = "Clear search")
                     }
                 }
@@ -1015,55 +1034,67 @@ fun SearchSortScreen(
                 listOf("All", "Active", "Done").forEach { filter ->
                     InputChip(
                         selected = selectedStatusFilter == filter,
-                        onClick = { selectedStatusFilter = filter },
+                        onClick = { onSelectedStatusFilterChange(filter) },
                         label = { Text(filter, fontSize = 12.sp) },
                         modifier = Modifier.padding(end = 4.dp)
                     )
                 }
             }
 
-            // Sort Selector Button inside dropdown menu style
-            var expandedSortMenu by remember { mutableStateOf(false) }
-            Box {
-                Button(
-                    onClick = { expandedSortMenu = true },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier.height(32.dp)
-                ) {
-                    Icon(Icons.Default.Sort, null, Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Sort: $sortBy", fontSize = 11.sp)
+            // Sort Selector and Direction Toggle Row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                var expandedSortMenu by remember { mutableStateOf(false) }
+                Box {
+                    FilterChip(
+                        selected = true,
+                        onClick = { expandedSortMenu = true },
+                        label = { Text("Sort: $sortBy", fontSize = 11.sp) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Sort, null, Modifier.size(14.dp))
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    DropdownMenu(
+                        expanded = expandedSortMenu,
+                        onDismissRequest = { expandedSortMenu = false }
+                    ) {
+                        listOf("Date", "Title", "Priority", "Difficulty", "Completeness", "Project").forEach { sortType ->
+                            DropdownMenuItem(
+                                text = { Text(sortType) },
+                                onClick = {
+                                    onSortByChange(sortType)
+                                    expandedSortMenu = false
+                                }
+                            )
+                        }
+                    }
                 }
 
-                DropdownMenu(
-                    expanded = expandedSortMenu,
-                    onDismissRequest = { expandedSortMenu = false }
+                IconButton(
+                    onClick = { onIsSortAscendingChange(!isSortAscending) },
+                    modifier = Modifier.size(32.dp)
                 ) {
-                    listOf("Date", "Priority", "Difficulty", "Completeness").forEach { sortType ->
-                        DropdownMenuItem(
-                            text = { Text(sortType) },
-                            onClick = {
-                                sortBy = sortType
-                                expandedSortMenu = false
-                            }
-                        )
-                    }
+                    Icon(
+                        imageVector = if (isSortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                        contentDescription = "Toggle sort direction",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
 
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.padding(vertical = 12.dp),
             color = MaterialTheme.colorScheme.outlineVariant
         )
 
-        // Process search and filters
-        val filteredIdeas = remember(allIdeas, searchQuery, selectedStatusFilter, sortBy, projects) {
+        // Process search and filters with custom sorting algorithms
+        val filteredIdeas = remember(allIdeas, searchQuery, selectedStatusFilter, sortBy, isSortAscending, projects) {
             var temp = allIdeas.filter {
                 (it.title.contains(searchQuery, ignoreCase = true) ||
                  it.description.contains(searchQuery, ignoreCase = true) ||
@@ -1079,29 +1110,78 @@ fun SearchSortScreen(
 
             when (sortBy) {
                 "Priority" -> {
-                    // Sort High -> Medium -> Low
-                    temp.sortedBy {
-                        when (it.priority) {
-                            "High" -> 0
-                            "Medium" -> 1
-                            "Low" -> 2
-                            else -> 3
+                    if (isSortAscending) {
+                        temp.sortedBy {
+                            when (it.priority) {
+                                "High" -> 2
+                                "Medium" -> 1
+                                "Low" -> 0
+                                else -> 3
+                            }
+                        }
+                    } else {
+                        temp.sortedBy {
+                            when (it.priority) {
+                                "High" -> 0
+                                "Medium" -> 1
+                                "Low" -> 2
+                                else -> 3
+                            }
                         }
                     }
                 }
                 "Difficulty" -> {
-                    // Hard -> Medium -> Easy
-                    temp.sortedBy {
-                        when (it.difficulty) {
-                            "Hard" -> 0
-                            "Medium" -> 1
-                            "Easy" -> 2
-                            else -> 3
+                    if (isSortAscending) {
+                        temp.sortedBy {
+                            when (it.difficulty) {
+                                "Hard" -> 2
+                                "Medium" -> 1
+                                "Easy" -> 0
+                                else -> 3
+                            }
+                        }
+                    } else {
+                        temp.sortedBy {
+                            when (it.difficulty) {
+                                "Hard" -> 0
+                                "Medium" -> 1
+                                "Easy" -> 2
+                                else -> 3
+                            }
                         }
                     }
                 }
-                "Completeness" -> temp.sortedBy { it.isDone }
-                else -> temp.sortedByDescending { it.createdAt } // Date (Default)
+                "Completeness" -> {
+                    if (isSortAscending) {
+                        temp.sortedBy { it.isDone }
+                    } else {
+                        temp.sortedByDescending { it.isDone }
+                    }
+                }
+                "Title" -> {
+                    if (isSortAscending) {
+                        temp.sortedBy { it.title.lowercase() }
+                    } else {
+                        temp.sortedByDescending { it.title.lowercase() }
+                    }
+                }
+                "Project" -> {
+                    val getProjName = { idea: Idea ->
+                        projects.find { it.id == idea.projectId }?.name ?: "Unorganized"
+                    }
+                    if (isSortAscending) {
+                        temp.sortedBy { getProjName(it).lowercase() }
+                    } else {
+                        temp.sortedByDescending { getProjName(it).lowercase() }
+                    }
+                }
+                else -> { // Date
+                    if (isSortAscending) {
+                        temp.sortedBy { it.createdAt }
+                    } else {
+                        temp.sortedByDescending { it.createdAt }
+                    }
+                }
             }
         }
 
